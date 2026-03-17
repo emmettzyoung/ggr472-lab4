@@ -13,12 +13,49 @@
     <link rel="stylesheet" href="style.css">
     <!-- Turf.js -->
     <script src='https://unpkg.com/@turf/turf@7.2.0/turf.min.js'></script>
+    <!-- Mapbox Geocoder -->
+    <link rel="stylesheet"
+        href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.1.0/mapbox-gl-geocoder.css"
+        type="text/css">
+    <script
+        src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.1.0/mapbox-gl-geocoder.min.js"></script>
+
 </head>
 
 <body>
+    <div class="center-text">
+        <h1>CrashTO: A Visualization of Vehicle Collisions in the City of Toronto</h1>
+    </div>
+    <div class="map-wrapper">
+        <!-- MAP CONTAINER -->
+        <div id='map' class='map'></div>
+        <!-- LEGEND -->
+        <div id='legend' class='legend'>
+            <h4>Collisions per 500 metre hexagonal tessaltion: Toronto</h4>
+            <!-- Contents of legend will now be added here -->
+        </div>
+        <!-- INTERACTIVITY -->
+        <div class='map-data-container'>
+            <label class="option-label" for="layercheck">Filter map view</label>
 
-    <!-- MAP CONTAINER -->
-    <div id='map' class='map'></div>
+            <!-- NAVIGATION ELEMENTS -->
+            <div class='map-search-container'>
+                <label for="geocoder">Search for location</label>
+                <div id="geocoder" class="geocoder"></div>
+                <button type="button" class="btn btn-primary btn-sm" id="returnbutton">Return to full extent</button>
+            </div>
+
+            <!-- Checkbox to show/hide layer -->
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="" id="layercheck" checked>
+                <label class="form-check-label" for="layercheck">Show layer</label>
+            </div>
+
+            <!-- Checkbox to show/hide legend -->
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="" id="legendcheck">
+                <label class="form-check-label" for="legendcheck">Show legend</label>
+            </div>
 
     <script src="script.js"></script>
 

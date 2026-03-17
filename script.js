@@ -11,10 +11,45 @@ mapboxgl.accessToken = 'pk.eyJ1IjoiZW1tZXR0eW91bmciLCJhIjoiY21rNGI3Y3Z4MDV3ZjNrc
 // Initialize map and edit to your preference
 const map = new mapboxgl.Map({
     container: 'map', // container id in HTML
-    style: 'mapbox://styles/mapbox/standard',
-    center: [-79.39, 43.65],  // starting point, longitude/latitude
-    zoom: 11 // starting zoom level
+    style: 'mapbox://styles/mapbox/dark-v11',
+    center: [-79.380754, 43.711979],  // starting point, longitude/latitude
+    zoom: 10, // starting zoom level
+    maxBounds: [
+        [-80.110931, 43.425996],
+        [-78.857117, 44.085612]
+    ]
 });
+
+
+/*--------------------------------------------------------------------
+ADD CONTROLS, INTERACTIVITY, AND GEOCODER
+--------------------------------------------------------------------*/
+
+// Add navigation and fullscreen controls to the map.
+map.addControl(new mapboxgl.NavigationControl());
+map.addControl(new mapboxgl.FullscreenControl());
+
+// Add geocoder control to the map, which allows users to search for locations in the GTA
+const geocoder = new MapboxGeocoder({
+    accessToken: mapboxgl.accessToken,
+    mapboxgl: mapboxgl,
+    region: "Ontario",
+    placeholder: 'Search for a location in GTA',
+    bbox: [-79.6393, 43.5810, -79.1158, 43.8554]
+});
+
+// Append the geocoder control to the div with id 'geocoder' in the HTML file, so that it appears on the map.
+document.getElementById('geocoder').appendChild(geocoder.onAdd(map));
+
+// Add event listener to the return button, which flies the map back to the original center and zoom level when clicked.
+document.getElementById('returnbutton').addEventListener('click', () => {
+    map.flyTo({
+        center: [-79.380754, 43.711979],
+        zoom: 10,
+        essential: true
+    });
+});
+
 
 /*--------------------------------------------------------------------
 Step 2: VIEW GEOJSON POINT DATA ON MAP
@@ -104,7 +139,7 @@ fetch("https://raw.githubusercontent.com/emmettzyoung/ggr472-lab4/refs/heads/mai
                 type: 'circle',
                 source: 'collisions',
                 paint: {
-                    'circle-color': '#000000',
+                    'circle-color': 'white',
                     'circle-radius': 3,
                 }
             });
@@ -140,4 +175,98 @@ fetch("https://raw.githubusercontent.com/emmettzyoung/ggr472-lab4/refs/heads/mai
 //        - The maximum number of collisions found in a hexagon
 //      Add a legend and additional functionality including pop-up windows
 
+/*--------------------------------------------------------------------
+EVENT LISTENERS
+--------------------------------------------------------------------*/
 
+// Add an event listener that changes the layer displayed based on check box using setLayoutProperty method.
+document.getElementById('layercheck').addEventListener('change', (e) => {
+    const selectedLayer = document.getElementById('layer-select').value;
+    map.setLayoutProperty(
+        selectedLayer,
+        'visibility',
+        e.target.checked ? 'visible' : 'none'
+    );
+});
+
+// Add an event listener that changes the layer displayed based on the dropdown menu selection using setLayoutProperty method and also updates the legend to match the selected layer.
+document.getElementById('layer-select').addEventListener('change', (event) => {
+    showOnlyLayer(event.target.value);
+    updateLegend(event.target.value);
+});
+
+document.getElementById('legendcheck').addEventListener('change', (e) => {
+    const legend = document.getElementById('legend');
+    legend.style.display = e.target.checked ? 'block' : 'none';
+});
+
+/*--------------------------------------------------------------------
+HOVER EFFECTS AND POPUPS
+--------------------------------------------------------------------*/
+
+// Assign variables to keep track of the currently hovered neighbourhood, so that we can reset their feature state when the mouse leaves them
+let hoveredHexigonId = null;
+
+// Neighbourhood hover for each layer (neighbourhoods-quantile here). 
+map.on('mousemove', 'collishexfill', (e) => {
+    if (e.features.length > 0) {
+        if (hoveredHexigonId !== null) {
+            map.setFeatureState(
+                { source: 'neighbourhoods', id: hoveredHexigonId },
+                { hover: false }
+            );
+        }
+        hoveredHexigonId = e.features[0].id;
+        map.setFeatureState(
+            { source: 'collishexfill', id: hoveredHexigonId },
+            { hover: true }
+        );
+    }
+});
+
+map.on('mouseleave', 'collishexfill', () => {
+    if (hoveredHexigonId !== null) {
+        map.setFeatureState(
+            { source: 'collishexfill', id: hoveredHexigonId },
+            { hover: false }
+        );
+    }
+    hoveredHexigonId = null;
+});
+
+// Add click event listeners to the neighbourhood to show popups with information about the clicked neighbourhood.
+map.on('click', 'collishexfill', (e) => {
+    new mapboxgl.Popup()
+        .setLngLat(e.lngLat)
+        .setHTML(
+            "<b>Collisions here</b> " + e.features[0].properties.COUNT + "<br>"
+        .addTo(map));
+});
+
+
+/*--------------------------------------------------------------------
+CREATE LEGEND IN JAVASCRIPT
+--------------------------------------------------------------------*/
+// Declare array variables for labels and colours
+const legenditems = [
+    { label: '0–100,000', colour: '#fd8d3c' },
+    { label: '100,000–500,000', colour: '#fc4e2a' },
+    { label: '500,000–1,000,000', colour: '#e31a1c' },
+    { label: '1,000,000–5,000,000', colour: '#bd0026' },
+    { label: '>5,000,000', colour: '#800026' }
+];
+
+// For each array item create a row to put the label and colour in
+legenditems.forEach(({ label, colour }) => {
+    const row = document.createElement('div'); // each item gets a 'row' as a div - this isn't in the legend yet, we do this later
+    const colcircle = document.createElement('span'); // create span for colour circle
+
+    colcircle.className = 'legend-colcircle'; // the colcircle will take on the shape and style properties defined in css
+    colcircle.style.setProperty('--legendcolour', colour); // a custom property is used to take the colour from the array and apply it to the css class
+
+    const text = document.createElement('span'); // create span for label text
+    text.textContent = label; // set text variable to tlegend label value in array
+
+    row.append(colcircle, text); // add circle and text to legend row
+    legend.appendChild(row); // add row to legend container
+});
