@@ -31,7 +31,7 @@
         <div id='map' class='map'></div>
         <!-- LEGEND -->
         <div id='legend' class='legend'>
-            <h4>Collisions per 500 metre hexagonal tessaltion: Toronto</h4>
+            <h4>Number of Collisions per 500 meters</h4>
             <!-- Contents of legend will now be added here -->
         </div>
         <!-- INTERACTIVITY -->
@@ -48,15 +48,33 @@
             <!-- Checkbox to show/hide layer -->
             <div class="form-check">
                 <input class="form-check-input" type="checkbox" value="" id="layercheck" checked>
-                <label class="form-check-label" for="layercheck">Show layer</label>
+                <label class="form-check-label" for="layercheck">Show hexagonal tesselation layer</label>
+            </div>
+
+            <!-- Checkbox to show/hide point layer -->
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="" id="pointcheck" checked>
+                <label class="form-check-label" for="layercheck">Show collision points layer</label>
             </div>
 
             <!-- Checkbox to show/hide legend -->
             <div class="form-check">
-                <input class="form-check-input" type="checkbox" value="" id="legendcheck">
+                <input class="form-check-input" type="checkbox" value="" id="legendcheck" checked>
                 <label class="form-check-label" for="legendcheck">Show legend</label>
             </div>
 
+            <p>CrashTO is a tool that compiles automobile collision data across the City of Toronto. </p>
+            <p>By creating a hexagonal tesselation, each representing 500 meters of space, hotspots emerge representing
+                areas with high proportions of collisions.</p>
+            <h4>How to use:</h4>
+            <p>Use the checkboxes above to turn on and off hexagonal and/or collision point layers to improve your
+                understanding of collisions across the city. You can also use
+                checkbox associated with the legend to turn on and off the legend. By searching for a location in
+                Toronto via the geocoder, users can analyze their neighbourhoods and the collisions near them. By
+                hovering over and clicking layers, users can better understand the type of collision associated with
+                collision points, and the amount of collisions per neighbourhood.</p>
+        </div>
+    </div>
     <script src="script.js"></script>
 
 </body>

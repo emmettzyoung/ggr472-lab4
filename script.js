@@ -11,7 +11,7 @@ mapboxgl.accessToken = 'pk.eyJ1IjoiZW1tZXR0eW91bmciLCJhIjoiY21rNGI3Y3Z4MDV3ZjNrc
 // Initialize map and edit to your preference
 const map = new mapboxgl.Map({
     container: 'map', // container id in HTML
-    style: 'mapbox://styles/mapbox/dark-v11',
+    style: 'mapbox://styles/mapbox/standard',
     center: [-79.380754, 43.711979],  // starting point, longitude/latitude
     zoom: 10, // starting zoom level
     maxBounds: [
@@ -126,22 +126,14 @@ fetch("https://raw.githubusercontent.com/emmettzyoung/ggr472-lab4/refs/heads/mai
             // Add it as a source and then add the layer.
             map.addSource('collisions', {
                 type: 'geojson',
-                data: collisions
+                data: collisions,
+                generateId: true
             });
 
             map.addSource('collishexgrid', {
                 type: 'geojson',
-                data: collishex
-            });
-
-            map.addLayer({
-                id: 'collisions-points',
-                type: 'circle',
-                source: 'collisions',
-                paint: {
-                    'circle-color': 'white',
-                    'circle-radius': 3,
-                }
+                data: collishex,
+                generateId: true
             });
 
             map.addLayer({
@@ -152,17 +144,56 @@ fetch("https://raw.githubusercontent.com/emmettzyoung/ggr472-lab4/refs/heads/mai
                     "fill-color": [
                         "step",
                         ["get", "COUNT"],
-                        "#ffffff",
-                        10, "#ffebf1",
-                        25, "#ffa0a6",
-                        maxcollis, "#ff0000"
+                        "#FEEBE7",
+                        10, "#FCC6BB",
+                        20, "#FAA18F",
+                        30, "#F87C63",
+                        40, "#F54927",
+                        50, "#F4320B",
+                        maxcollis, "#C82909"
                     ],
-                    "fill-opacity": 0.8
+                    'fill-opacity': [
+                        'case',
+                        ['boolean', ['feature-state', 'hover'], false],
+                        0.3,    // opacity on hover
+                        0.9   // default opacity
+                    ]
                 },
                 filter: ["!=", "COUNT", 0],
             });
-    })
-});
+
+            map.addLayer({
+                id: 'collisions-points',
+                type: 'circle',
+                source: 'collisions',
+                paint: {
+                    'circle-color': '#000000',
+                    'circle-radius': [
+                        'case',
+                        ['boolean', ['feature-state', 'hover'], false],
+                        10,
+                        3
+                    ]
+                }
+            });
+
+            map.addLayer({
+                'id': 'collishex-outline',
+                'type': 'line',
+                'source': 'collishexgrid',
+                'paint': {
+                    'line-color': '#000000',
+                    'line-width': [
+                        'case',
+                        ['boolean', ['feature-state', 'hover'], false],
+                        3,
+                        0    
+                    ]
+                }
+            });
+
+        })
+    });
 
 
 // /*--------------------------------------------------------------------
@@ -179,26 +210,30 @@ fetch("https://raw.githubusercontent.com/emmettzyoung/ggr472-lab4/refs/heads/mai
 EVENT LISTENERS
 --------------------------------------------------------------------*/
 
+const legend = document.getElementById('legend');
+legend.style.display = 'block';
+
 // Add an event listener that changes the layer displayed based on check box using setLayoutProperty method.
 document.getElementById('layercheck').addEventListener('change', (e) => {
-    const selectedLayer = document.getElementById('layer-select').value;
     map.setLayoutProperty(
-        selectedLayer,
+        'collishexfill',
         'visibility',
         e.target.checked ? 'visible' : 'none'
     );
 });
 
-// Add an event listener that changes the layer displayed based on the dropdown menu selection using setLayoutProperty method and also updates the legend to match the selected layer.
-document.getElementById('layer-select').addEventListener('change', (event) => {
-    showOnlyLayer(event.target.value);
-    updateLegend(event.target.value);
+document.getElementById('pointcheck').addEventListener('change', (e) => {
+    map.setLayoutProperty(
+        'collisions-points',
+        'visibility',
+        e.target.checked ? 'visible' : 'none'
+    );
 });
 
 document.getElementById('legendcheck').addEventListener('change', (e) => {
-    const legend = document.getElementById('legend');
     legend.style.display = e.target.checked ? 'block' : 'none';
 });
+
 
 /*--------------------------------------------------------------------
 HOVER EFFECTS AND POPUPS
@@ -206,19 +241,46 @@ HOVER EFFECTS AND POPUPS
 
 // Assign variables to keep track of the currently hovered neighbourhood, so that we can reset their feature state when the mouse leaves them
 let hoveredHexigonId = null;
+let hoveredPointId = null;
+
+map.on('mousemove', 'collisions-points', (e) => {
+    if (e.features.length > 0) {
+        if (hoveredPointId !== null) {
+            map.setFeatureState(
+                { source: 'collisions', id: hoveredPointId },
+                { hover: false }
+            );
+        }
+        hoveredPointId = e.features[0].id;
+        map.setFeatureState(
+            { source: 'collisions', id: hoveredPointId },
+            { hover: true }
+        );
+    }
+});
+
+map.on('mouseleave', 'collisions-points', () => {
+    if (hoveredPointId !== null) {
+        map.setFeatureState(
+            { source: 'collisions', id: hoveredPointId },
+            { hover: false }
+        );
+        hoveredPointId = null;
+    }
+});
 
 // Neighbourhood hover for each layer (neighbourhoods-quantile here). 
 map.on('mousemove', 'collishexfill', (e) => {
     if (e.features.length > 0) {
         if (hoveredHexigonId !== null) {
             map.setFeatureState(
-                { source: 'neighbourhoods', id: hoveredHexigonId },
+                { source: 'collishexgrid', id: hoveredHexigonId },
                 { hover: false }
             );
         }
         hoveredHexigonId = e.features[0].id;
         map.setFeatureState(
-            { source: 'collishexfill', id: hoveredHexigonId },
+            { source: 'collishexgrid', id: hoveredHexigonId },
             { hover: true }
         );
     }
@@ -227,11 +289,11 @@ map.on('mousemove', 'collishexfill', (e) => {
 map.on('mouseleave', 'collishexfill', () => {
     if (hoveredHexigonId !== null) {
         map.setFeatureState(
-            { source: 'collishexfill', id: hoveredHexigonId },
+            { source: 'collishexgrid', id: hoveredHexigonId },
             { hover: false }
         );
+        hoveredHexigonId = null; // move this INSIDE the if block, AFTER setFeatureState
     }
-    hoveredHexigonId = null;
 });
 
 // Add click event listeners to the neighbourhood to show popups with information about the clicked neighbourhood.
@@ -239,22 +301,39 @@ map.on('click', 'collishexfill', (e) => {
     new mapboxgl.Popup()
         .setLngLat(e.lngLat)
         .setHTML(
-            "<b>Collisions here</b> " + e.features[0].properties.COUNT + "<br>"
-        .addTo(map));
+            "<b>Number of collisions:</b> " + e.features[0].properties.COUNT + "<br>"
+        )
+        .addTo(map);
+});
+
+map.on('click', 'collisions-points', (e) => {
+    new mapboxgl.Popup()
+        .setLngLat(e.lngLat)
+        .setHTML(
+            "<b>Severity of Injury:</b> " + e.features[0].properties.INJURY + "<br>" +
+            "<b>Year of Collision:</b> " + e.features[0].properties.YEAR + "<br>" +
+            "<b>Transportation used of the Individual hit:</b> " + e.features[0].properties.INVTYPE + "<br>" +
+            "<b>Neighbourhood of occurence:</b> " + e.features[0].properties.NEIGHBOURHOOD_158
+        )
+        .addTo(map);
 });
 
 
 /*--------------------------------------------------------------------
 CREATE LEGEND IN JAVASCRIPT
 --------------------------------------------------------------------*/
+
 // Declare array variables for labels and colours
 const legenditems = [
-    { label: '0–100,000', colour: '#fd8d3c' },
-    { label: '100,000–500,000', colour: '#fc4e2a' },
-    { label: '500,000–1,000,000', colour: '#e31a1c' },
-    { label: '1,000,000–5,000,000', colour: '#bd0026' },
-    { label: '>5,000,000', colour: '#800026' }
+    { label: 'Low: 1–9', colour: '#FEEBE7' },
+    { label: 'Low-Moderate: 10–19', colour: '#FCC6BB' },
+    { label: 'Moderate: 20-29', colour: '#FAA18F' },
+    { label: 'Moderate-High 30-39', colour: '#F87C63' },
+    { label: 'High: 40-49', colour: '#F54927' },
+    { label: 'Extremely High: 50-54', colour: '#F4320B' },
+    { label: 'Highest: 55', colour: '#C82909' }, 
 ];
+
 
 // For each array item create a row to put the label and colour in
 legenditems.forEach(({ label, colour }) => {
