@@ -5,13 +5,13 @@ GGR472 LAB 4: Incorporating GIS Analysis into web maps using Turf.js
 /*--------------------------------------------------------------------
 Step 1: INITIALIZE MAP
 --------------------------------------------------------------------*/
-// Define access token
+// Define access token (Emmett's personal access token)
 mapboxgl.accessToken = 'pk.eyJ1IjoiZW1tZXR0eW91bmciLCJhIjoiY21rNGI3Y3Z4MDV3ZjNrcHk2MXFrYTlpeSJ9.nhnMjjZj_o1eyXtp_Y8Svw';
 
-// Initialize map and edit to your preference
+// Initialize map and edit to preference
 const map = new mapboxgl.Map({
-    container: 'map', // container id in HTML
-    style: 'mapbox://styles/mapbox/standard',
+    container: 'map', // refers to container id in HTML
+    style: 'mapbox://styles/mapbox/standard', // decided to just use the standard style
     center: [-79.380754, 43.711979],  // starting point, longitude/latitude
     zoom: 10, // starting zoom level
     maxBounds: [
@@ -22,14 +22,14 @@ const map = new mapboxgl.Map({
 
 
 /*--------------------------------------------------------------------
-ADD CONTROLS, INTERACTIVITY, AND GEOCODER
+ADD CONTROLS, INTERACTIVITY, AND GEOCODER 
 --------------------------------------------------------------------*/
 
-// Add navigation and fullscreen controls to the map.
+// Add navigation and fullscreen controls to the map
 map.addControl(new mapboxgl.NavigationControl());
 map.addControl(new mapboxgl.FullscreenControl());
 
-// Add geocoder control to the map, which allows users to search for locations in the GTA
+// Add geocoder control to the map, which allows users to search for locations specifically in the GTA
 const geocoder = new MapboxGeocoder({
     accessToken: mapboxgl.accessToken,
     mapboxgl: mapboxgl,
@@ -54,8 +54,37 @@ document.getElementById('returnbutton').addEventListener('click', () => {
 /*--------------------------------------------------------------------
 Step 2: VIEW GEOJSON POINT DATA ON MAP
 --------------------------------------------------------------------*/
+// Set up variables to append responses to from fetch requests
 let collisions;
+let wards;
 
+// Set up the wards first and serperately from the collision data
+fetch("https://raw.githubusercontent.com/emmettzyoung/ggr472-lab4/refs/heads/main/data/City Wards Data - 4326.geojson")
+    .then(response => response.json())
+    .then(response => {
+        console.log(response);
+        wards = response;
+
+        map.on('load', () => {
+            map.addSource('wards', {
+                type: 'geojson',
+                data: wards,
+            });
+
+            map.addLayer({
+                'id': 'wards-outline',
+                'type': 'line',
+                'source': 'wards',
+                'paint': {
+                    'line-color': '#000000',
+                    'line-width': 1.5
+                }
+            });
+
+        })
+    });
+
+// Then, fetch the collision data, putting everything that the map loads after the response, but in the fethc request so it loads congruently
 fetch("https://raw.githubusercontent.com/emmettzyoung/ggr472-lab4/refs/heads/main/data/pedcyc_collision_06-21.geojson")
     .then(response => response.json())
     .then(response => {
@@ -67,16 +96,16 @@ fetch("https://raw.githubusercontent.com/emmettzyoung/ggr472-lab4/refs/heads/mai
             Step 3: CREATE BOUNDING BOX VARIABLES FOR HEXGRID
             --------------------------------------------------------------------*/
 
-            // Get an envelope around the collision points.
+            // Get an envelope around the collision points
             let enveloped = turf.envelope(collisions);
-            // Uncommment the following code and comment out everything else to see it in the console.
+            // Uncommment the following code and comment out everything else to see it in the console
             // console.log(enveloped)
 
-            // Get the bounding box from the envelope variable previously set and increase the size by 10%.
+            // Get the bounding box from the envelope variable previously set and increase the size by 10%
             let bboxscaled = turf.transformScale(enveloped, 1.1);
             console.log(bboxscaled)
 
-            // Get the max and min X and Y values and store as an array of coordinates for hexgrid arguments.
+            // Get the max and min X and Y values and store as an array of coordinates for hexgrid arguments
             let bboxcoords = [
                 bboxscaled.geometry.coordinates[0][0][0],
                 bboxscaled.geometry.coordinates[0][0][1],
@@ -84,37 +113,35 @@ fetch("https://raw.githubusercontent.com/emmettzyoung/ggr472-lab4/refs/heads/mai
                 bboxscaled.geometry.coordinates[0][2][1]
             ];
 
-            // Create a variable for cell size of 500 meters.
+            // Create a variable for cell size of 500 meters
             let cellSide = 500;
-            // Create a variable for the unit options, being meters.
+            // Create a variable for the unit options, being meters
             let options = { units: "meters" };
 
             /*--------------------------------------------------------------------
             Step 3: Part 2: CREATE HEXGRID
             --------------------------------------------------------------------*/
-            // Create the variable.
+            // Create the variable
             let hexgrid = turf.hexGrid(bboxcoords, cellSide, options);
 
             /*--------------------------------------------------------------------
             Step 4: AGGREGATE COLLISIONS BY HEXGRID
             --------------------------------------------------------------------*/
-            //HINT: Use Turf collect function to collect all '_id' properties from the collision points data for each heaxagon
-            //      View the collect output in the console. Where there are no intersecting points in polygons, arrays will be empty
 
-            // Use .collect from turf.js to collect all points (collisions) within each hexagon.
+            // Use .collect from turf.js to collect all points (collisions) within each hexagon
             let collishex = turf.collect(hexgrid, collisions, '_id', 'values');
 
-            // Create a let variable that stores the maximum number of collisions (set to 0 as default).
+            // Create a let variable that stores the maximum number of collisions (set to 0 as default)
             let maxcollis = 0;
 
-            // Loop through each feature (hexagon). 
+            // Loop through each feature (hexagon)
             collishex.features.forEach((feature) => {
-                // Create a new property column in feature collection set in collishex called COUNT.
-                // Set COUNT to be equal to the length (or amount) of values in each hexagon (think len in python).
+                // Create a new property column in feature collection set in collishex called COUNT
+                // Set COUNT to be equal to the length (or amount) of values in each hexagon (think len in python)
                 feature.properties.COUNT = feature.properties.values.length
                 // Set an if condition so that if the count is larger than maxcollis (set to 0)...
                 if (feature.properties.COUNT > maxcollis) {
-                    // ...then update the amount of collisions to the amount of collisions counted two lines above.
+                    // ...then update the amount of collisions to the amount of collisions counted two lines above
                     maxcollis = feature.properties.COUNT
                 }
             });
@@ -123,24 +150,27 @@ fetch("https://raw.githubusercontent.com/emmettzyoung/ggr472-lab4/refs/heads/mai
             ADD LAYERS (HEXGRID AND COLLISIONS AS POINTS)
             --------------------------------------------------------------------*/
 
-            // Add it as a source and then add the layer.
+            // Add the collisions as a source (this will set up the points)
             map.addSource('collisions', {
                 type: 'geojson',
                 data: collisions,
                 generateId: true
             });
 
+            // Add the collision hexagonal tesselation as a source
             map.addSource('collishexgrid', {
                 type: 'geojson',
                 data: collishex,
                 generateId: true
             });
 
+            // Add the collishexgrid with a step for the fill-color, allowing for symbology through color, and change opacity according to later event listener
             map.addLayer({
                 id: 'collishexfill',
                 type: 'fill',
                 source: 'collishexgrid',
                 paint: {
+                    // Sets dividing points where color changes
                     "fill-color": [
                         "step",
                         ["get", "COUNT"],
@@ -152,16 +182,19 @@ fetch("https://raw.githubusercontent.com/emmettzyoung/ggr472-lab4/refs/heads/mai
                         50, "#F4320B",
                         maxcollis, "#C82909"
                     ],
+                    // Sets the opacity as 0.7 regularily and 0.3 when hovered over, so users can see the area of interest
                     'fill-opacity': [
                         'case',
                         ['boolean', ['feature-state', 'hover'], false],
-                        0.3,    // opacity on hover
-                        0.7   // default opacity
+                        0.3,  
+                        0.7 
                     ]
                 },
-                filter: ["!=", "COUNT", 0],
+                // Any areas with no collisions will be excluded
+                filter: ["!=", "COUNT", 0], 
             });
 
+            // Add the collisions with a case for the radius of a circle, looking out for an event listener defined later for adaptive hovering
             map.addLayer({
                 id: 'collisions-points',
                 type: 'circle',
@@ -169,6 +202,7 @@ fetch("https://raw.githubusercontent.com/emmettzyoung/ggr472-lab4/refs/heads/mai
                 paint: {
                     'circle-color': '#000000',
                     'circle-radius': [
+                        // When a point is hovered-over, it increases in size
                         'case',
                         ['boolean', ['feature-state', 'hover'], false],
                         10,
@@ -177,6 +211,7 @@ fetch("https://raw.githubusercontent.com/emmettzyoung/ggr472-lab4/refs/heads/mai
                 }
             });
 
+            // Add the collishex layer as a line feature, so that an outline can be created when hovered over (looking out for event listener defined later)
             map.addLayer({
                 'id': 'collishex-outline',
                 'type': 'line',
@@ -184,10 +219,11 @@ fetch("https://raw.githubusercontent.com/emmettzyoung/ggr472-lab4/refs/heads/mai
                 'paint': {
                     'line-color': '#000000',
                     'line-width': [
+                        // When a hexagon is hoverd over, the line becomes visible
                         'case',
                         ['boolean', ['feature-state', 'hover'], false],
                         3,
-                        0    
+                        0
                     ]
                 }
             });
@@ -196,24 +232,20 @@ fetch("https://raw.githubusercontent.com/emmettzyoung/ggr472-lab4/refs/heads/mai
     });
 
 
-// /*--------------------------------------------------------------------
-// Step 5: FINALIZE YOUR WEB MAP
-// --------------------------------------------------------------------*/
-//HINT: Think about the display of your data and usability of your web map.
-//      Update the addlayer paint properties for your hexgrid using:
-//        - an expression
-//        - The COUNT attribute
-//        - The maximum number of collisions found in a hexagon
-//      Add a legend and additional functionality including pop-up windows
+/*--------------------------------------------------------------------
+ Step 5: FINALIZE YOUR WEB MAP
+--------------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------
 EVENT LISTENERS
 --------------------------------------------------------------------*/
 
+// Define the legend globally 
 const legend = document.getElementById('legend');
 legend.style.display = 'block';
 
-// Add an event listener that changes the layer displayed based on check box using setLayoutProperty method.
+// Add event listeners that changes the layer displayed based on check box using setLayoutProperty method
+// For collishex...
 document.getElementById('layercheck').addEventListener('change', (e) => {
     map.setLayoutProperty(
         'collishexfill',
@@ -222,6 +254,7 @@ document.getElementById('layercheck').addEventListener('change', (e) => {
     );
 });
 
+// ...and for points...
 document.getElementById('pointcheck').addEventListener('change', (e) => {
     map.setLayoutProperty(
         'collisions-points',
@@ -230,6 +263,7 @@ document.getElementById('pointcheck').addEventListener('change', (e) => {
     );
 });
 
+// ...and for the legend
 document.getElementById('legendcheck').addEventListener('change', (e) => {
     legend.style.display = e.target.checked ? 'block' : 'none';
 });
@@ -239,10 +273,11 @@ document.getElementById('legendcheck').addEventListener('change', (e) => {
 HOVER EFFECTS AND POPUPS
 --------------------------------------------------------------------*/
 
-// Assign variables to keep track of the currently hovered neighbourhood, so that we can reset their feature state when the mouse leaves them
+// Assign variables to keep track of the currently hovered neighbourhood, so that their feature state is reset when the mouse leaves them
 let hoveredHexigonId = null;
 let hoveredPointId = null;
 
+// Set up the mousemove action on the points first...
 map.on('mousemove', 'collisions-points', (e) => {
     if (e.features.length > 0) {
         if (hoveredPointId !== null) {
@@ -269,7 +304,7 @@ map.on('mouseleave', 'collisions-points', () => {
     }
 });
 
-// Neighbourhood hover for each layer (neighbourhoods-quantile here). 
+// ...then the collishex.
 map.on('mousemove', 'collishexfill', (e) => {
     if (e.features.length > 0) {
         if (hoveredHexigonId !== null) {
@@ -292,20 +327,21 @@ map.on('mouseleave', 'collishexfill', () => {
             { source: 'collishexgrid', id: hoveredHexigonId },
             { hover: false }
         );
-        hoveredHexigonId = null; // move this INSIDE the if block, AFTER setFeatureState
+        hoveredHexigonId = null; 
     }
 });
 
-// Add click event listeners to the neighbourhood to show popups with information about the clicked neighbourhood.
+// Add click event listeners to the hexagon tesselation to show popups with information about the clicked hexagon...
 map.on('click', 'collishexfill', (e) => {
     new mapboxgl.Popup()
         .setLngLat(e.lngLat)
         .setHTML(
-            "<b>Number of collisions:</b> " + e.features[0].properties.COUNT + "<br>"
+            "<b>Number of collisions in this area:</b> " + e.features[0].properties.COUNT + "<br>"
         )
         .addTo(map);
 });
 
+// ...and for the points as well.
 map.on('click', 'collisions-points', (e) => {
     new mapboxgl.Popup()
         .setLngLat(e.lngLat)
@@ -331,7 +367,7 @@ const legenditems = [
     { label: 'Moderate-High 30-39', colour: '#F87C63' },
     { label: 'High: 40-49', colour: '#F54927' },
     { label: 'Extremely High: 50-54', colour: '#F4320B' },
-    { label: 'Highest: 55', colour: '#C82909' }, 
+    { label: 'Highest: 55', colour: '#C82909' },
 ];
 
 
