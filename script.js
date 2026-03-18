@@ -156,7 +156,7 @@ fetch("https://raw.githubusercontent.com/emmettzyoung/ggr472-lab4/refs/heads/mai
                         'case',
                         ['boolean', ['feature-state', 'hover'], false],
                         0.3,    // opacity on hover
-                        0.9   // default opacity
+                        0.7   // default opacity
                     ]
                 },
                 filter: ["!=", "COUNT", 0],
